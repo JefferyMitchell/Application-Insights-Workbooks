@@ -1504,6 +1504,287 @@
                   "styleSettings": {
                     "padding": "10"
                   }
+                },
+                {
+                  "type": 12,
+                  "content": {
+                    "version": "NotebookGroup/1.0",
+                    "groupType": "editable",
+                    "title": "Completed connection duration",
+                    "expandable": true,
+                    "items": [
+                      {
+                        "type": 1,
+                        "content": {
+                          "json": "Length of individual connections (from *Started* to *Completed* in `WVDConnections`) that ended in the selected time range. A user who disconnects and reconnects is counted as separate connections. Durations are measured in full, including time before the selected range, for connections that started up to 7 days earlier."
+                        },
+                        "name": "ConnectionDurationText"
+                      },
+                      {
+                        "type": 3,
+                        "content": {
+                          "version": "KqlItem/1.0",
+                          "query": "let StartWin = {TimeRange:start};\r\nlet EndWin = {TimeRange:end};\r\nlet Lookback = 7d;  // include connections that started before the window so their full length is measured\r\nWVDConnections\r\n| where _ResourceId =~ '{HostPool}'\r\n| where TimeGenerated between ((StartWin - Lookback) .. EndWin)\r\n| where State in (\"Started\", \"Completed\")\r\n| summarize StartTime = minif(TimeGenerated, State == \"Started\"),\r\n            EndTime = minif(TimeGenerated, State == \"Completed\"),\r\n            UserName = take_anyif(UserName, isnotempty(UserName))\r\n            by CorrelationId\r\n| where isnotempty(StartTime) and isnotempty(EndTime)\r\n| where EndTime between (StartWin .. EndWin)  // completed connections that ended in the window\r\n| extend DurationMin = (EndTime - StartTime) / 1m\r\n| summarize Users = dcount(UserName),\r\n            Connections = count(),\r\n            AvgMin = avg(DurationMin),\r\n            MedianMin = percentile(DurationMin, 50),\r\n            P90Min = percentile(DurationMin, 90),\r\n            MaxMin = max(DurationMin)\r\n| project [\"Host Pool\"] = \"{HostPool:label}\", Users, Connections, AvgMin, MedianMin, P90Min, MaxMin",
+                          "size": 4,
+                          "title": "Completed connection duration summary",
+                          "noDataMessage": "No completed connections found",
+                          "showExportToExcel": true,
+                          "queryType": 0,
+                          "resourceType": "microsoft.operationalinsights/workspaces",
+                          "crossComponentResources": [
+                            "{poolla}"
+                          ],
+                          "visualization": "table",
+                          "gridSettings": {
+                            "formatters": [
+                              {
+                                "columnMatch": "AvgMin",
+                                "formatter": 0,
+                                "formatOptions": {
+                                  "customColumnWidthSetting": "10ch"
+                                },
+                                "numberFormat": {
+                                  "unit": 25,
+                                  "options": {
+                                    "style": "decimal",
+                                    "useGrouping": false,
+                                    "maximumFractionDigits": 1
+                                  }
+                                }
+                              },
+                              {
+                                "columnMatch": "MedianMin",
+                                "formatter": 0,
+                                "formatOptions": {
+                                  "customColumnWidthSetting": "10ch"
+                                },
+                                "numberFormat": {
+                                  "unit": 25,
+                                  "options": {
+                                    "style": "decimal",
+                                    "useGrouping": false,
+                                    "maximumFractionDigits": 1
+                                  }
+                                }
+                              },
+                              {
+                                "columnMatch": "P90Min",
+                                "formatter": 0,
+                                "formatOptions": {
+                                  "customColumnWidthSetting": "16ch"
+                                },
+                                "numberFormat": {
+                                  "unit": 25,
+                                  "options": {
+                                    "style": "decimal",
+                                    "useGrouping": false,
+                                    "maximumFractionDigits": 1
+                                  }
+                                }
+                              },
+                              {
+                                "columnMatch": "MaxMin",
+                                "formatter": 0,
+                                "formatOptions": {
+                                  "customColumnWidthSetting": "10ch"
+                                },
+                                "numberFormat": {
+                                  "unit": 25,
+                                  "options": {
+                                    "style": "decimal",
+                                    "useGrouping": false,
+                                    "maximumFractionDigits": 1
+                                  }
+                                }
+                              }
+                            ],
+                            "labelSettings": [
+                              {
+                                "columnId": "AvgMin",
+                                "label": "Avg"
+                              },
+                              {
+                                "columnId": "MedianMin",
+                                "label": "Median"
+                              },
+                              {
+                                "columnId": "P90Min",
+                                "label": "90th percentile"
+                              },
+                              {
+                                "columnId": "MaxMin",
+                                "label": "Max"
+                              }
+                            ]
+                          }
+                        },
+                        "customWidth": "100",
+                        "showPin": true,
+                        "name": "ConnectionDurationSummary",
+                        "styleSettings": {
+                          "showBorder": true
+                        }
+                      },
+                      {
+                        "type": 12,
+                        "content": {
+                          "version": "NotebookGroup/1.0",
+                          "groupType": "editable",
+                          "title": "Connection duration by user",
+                          "expandable": true,
+                          "items": [
+                            {
+                              "type": 3,
+                              "content": {
+                                "version": "KqlItem/1.0",
+                                "query": "let StartWin = {TimeRange:start};\r\nlet EndWin = {TimeRange:end};\r\nlet Lookback = 7d;  // include connections that started before the window so their full length is measured\r\nWVDConnections\r\n| where _ResourceId =~ '{HostPool}'\r\n| where TimeGenerated between ((StartWin - Lookback) .. EndWin)\r\n| where State in (\"Started\", \"Completed\")\r\n| summarize StartTime = minif(TimeGenerated, State == \"Started\"),\r\n            EndTime = minif(TimeGenerated, State == \"Completed\"),\r\n            UserName = take_anyif(UserName, isnotempty(UserName))\r\n            by CorrelationId\r\n| where isnotempty(StartTime) and isnotempty(EndTime)\r\n| where EndTime between (StartWin .. EndWin)  // completed connections that ended in the window\r\n| extend DurationMin = (EndTime - StartTime) / 1m\r\n| summarize Connections = count(),\r\n            AvgMin = avg(DurationMin),\r\n            MedianMin = percentile(DurationMin, 50),\r\n            P90Min = percentile(DurationMin, 90),\r\n            MaxMin = max(DurationMin),\r\n            TotalHours = sum(DurationMin) / 60\r\n            by UserName\r\n| sort by AvgMin desc",
+                                "size": 1,
+                                "aggregation": 5,
+                                "showAnalytics": true,
+                                "noDataMessage": "No completed connections found",
+                                "showExportToExcel": true,
+                                "queryType": 0,
+                                "resourceType": "microsoft.operationalinsights/workspaces",
+                                "crossComponentResources": [
+                                  "{poolla}"
+                                ],
+                                "visualization": "table",
+                                "gridSettings": {
+                                  "formatters": [
+                                    {
+                                      "columnMatch": "Connections",
+                                      "formatter": 0,
+                                      "formatOptions": {
+                                        "customColumnWidthSetting": "12ch"
+                                      }
+                                    },
+                                    {
+                                      "columnMatch": "AvgMin",
+                                      "formatter": 4,
+                                      "formatOptions": {
+                                        "palette": "blue",
+                                        "customColumnWidthSetting": "14ch"
+                                      },
+                                      "numberFormat": {
+                                        "unit": 25,
+                                        "options": {
+                                          "style": "decimal",
+                                          "useGrouping": false,
+                                          "maximumFractionDigits": 1
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "columnMatch": "MedianMin",
+                                      "formatter": 0,
+                                      "formatOptions": {
+                                        "customColumnWidthSetting": "10ch"
+                                      },
+                                      "numberFormat": {
+                                        "unit": 25,
+                                        "options": {
+                                          "style": "decimal",
+                                          "useGrouping": false,
+                                          "maximumFractionDigits": 1
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "columnMatch": "P90Min",
+                                      "formatter": 0,
+                                      "formatOptions": {
+                                        "customColumnWidthSetting": "16ch"
+                                      },
+                                      "numberFormat": {
+                                        "unit": 25,
+                                        "options": {
+                                          "style": "decimal",
+                                          "useGrouping": false,
+                                          "maximumFractionDigits": 1
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "columnMatch": "MaxMin",
+                                      "formatter": 0,
+                                      "formatOptions": {
+                                        "customColumnWidthSetting": "10ch"
+                                      },
+                                      "numberFormat": {
+                                        "unit": 25,
+                                        "options": {
+                                          "style": "decimal",
+                                          "useGrouping": false,
+                                          "maximumFractionDigits": 1
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "columnMatch": "TotalHours",
+                                      "formatter": 0,
+                                      "formatOptions": {
+                                        "customColumnWidthSetting": "12ch"
+                                      },
+                                      "numberFormat": {
+                                        "unit": 0,
+                                        "options": {
+                                          "style": "decimal",
+                                          "minimumFractionDigits": 1,
+                                          "maximumFractionDigits": 1
+                                        }
+                                      }
+                                    }
+                                  ],
+                                  "rowLimit": 5000,
+                                  "filter": true,
+                                  "labelSettings": [
+                                    {
+                                      "columnId": "UserName",
+                                      "label": "User"
+                                    },
+                                    {
+                                      "columnId": "AvgMin",
+                                      "label": "Avg"
+                                    },
+                                    {
+                                      "columnId": "MedianMin",
+                                      "label": "Median"
+                                    },
+                                    {
+                                      "columnId": "P90Min",
+                                      "label": "90th percentile"
+                                    },
+                                    {
+                                      "columnId": "MaxMin",
+                                      "label": "Max"
+                                    },
+                                    {
+                                      "columnId": "TotalHours",
+                                      "label": "Total hours"
+                                    }
+                                  ]
+                                }
+                              },
+                              "customWidth": "100",
+                              "showPin": true,
+                              "name": "ConnectionDurationByUser",
+                              "styleSettings": {
+                                "showBorder": true
+                              }
+                            }
+                          ]
+                        },
+                        "name": "ConnectionDurationByUserGroup",
+                        "styleSettings": {
+                          "padding": "10"
+                        }
+                      }
+                    ]
+                  },
+                  "name": "ConnectionDurationGroup",
+                  "styleSettings": {
+                    "padding": "10"
+                  }
                 }
               ]
             },
